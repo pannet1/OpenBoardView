@@ -17,7 +17,10 @@ else()
 		find_library(COCOA_LIBRARY Cocoa)
 		find_package(OpenGL REQUIRED)
 		set(OPENGL_INCLUDE_DIR ${OPENGL_INCLUDE_DIR}/Headers)
-	else(APPLE)
+	elseif(EMSCRIPTEN)
+		# Emscripten: no fontconfig, GTK, GIO — browser handles fonts, files, etc.
+		add_definitions(-DENABLE_GLES2)
+	else()
 		find_package(PkgConfig REQUIRED)
 
 		pkg_check_modules(FONTCONFIG REQUIRED fontconfig)
@@ -47,7 +50,7 @@ else()
 		else()
 			message(SEND_ERROR "GIO not found, PDFBridgeEvince cannot be enabled.")
 		endif()
-	endif(APPLE)
+	endif()
 endif()
 
 # python is required for GenCAD grammar build-rime generation
