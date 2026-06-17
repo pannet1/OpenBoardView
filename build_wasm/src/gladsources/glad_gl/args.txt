@@ -1,1 +1,0 @@
---out-path /home/pannet1/programs/OpenBoardView/build_wasm/src/gladsources/glad_gl --api gl:compatibility=3.2 --extensions   --reproducible c
