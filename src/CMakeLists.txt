@@ -28,30 +28,36 @@ if(NOT UTF8_INCLUDE_DIR)
 endif()
 
 ## zlib ##
-if(WIN32)
-	set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "While finding system-provided zlib look for static one")
-endif()
-find_package(ZLIB)
-if(NOT ZLIB_FOUND)
-	execute_process(
-		COMMAND git submodule update --init src/zlib
-		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-	)
-	execute_process( # Dirty workaround to prevent zlib from building examples
-		COMMAND sed "/^# Example binaries$/,$d" -i src/zlib/CMakeLists.txt
-		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-	)
-
-	set(SKIP_INSTALL_FILES YES)
-	set(SKIP_INSTALL_HEADERS NO)
-	add_subdirectory(zlib)
-
+if(EMSCRIPTEN)
+	# Emscripten provides zlib via port flag — link only (bundled zlib provides headers)
+	set(ZLIB_INCLUDE_DIRS "")
+	set(ZLIB_LIBRARIES "")
+else()
 	if(WIN32)
-		set(ZLIB_LIBRARIES zlibstatic CACHE INTERNAL "zlib library")
-	else()
-		set(ZLIB_LIBRARIES z CACHE INTERNAL "zlib library")
+		set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "While finding system-provided zlib look for static one")
 	endif()
-	set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_BINARY_DIR}/src/zlib)
+	find_package(ZLIB)
+	if(NOT ZLIB_FOUND)
+		execute_process(
+			COMMAND git submodule update --init src/zlib
+			WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+		)
+		execute_process( # Dirty workaround to prevent zlib from building examples
+			COMMAND sed "/^# Example binaries$/,$d" -i src/zlib/CMakeLists.txt
+			WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+		)
+
+		set(SKIP_INSTALL_FILES YES)
+		set(SKIP_INSTALL_HEADERS NO)
+		add_subdirectory(zlib)
+
+		if(WIN32)
+			set(ZLIB_LIBRARIES zlibstatic CACHE INTERNAL "zlib library")
+		else()
+			set(ZLIB_LIBRARIES z CACHE INTERNAL "zlib library")
+		endif()
+		set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/zlib ${CMAKE_BINARY_DIR}/src/zlib)
+	endif()
 endif()
 
 ## SQLite3 ##
@@ -59,6 +65,7 @@ if(EMSCRIPTEN)
 	# Emscripten provides SQLite3 via port flag
 	add_library(SQLite::SQLite3 INTERFACE IMPORTED)
 	target_link_options(SQLite::SQLite3 INTERFACE "-s USE_SQLITE3=1")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SQLITE3=1")
 else()
 	find_package(SQLite3)
 	if(NOT SQLITE3_FOUND)
@@ -78,16 +85,16 @@ if(ENABLE_GL1 OR ENABLE_GL3)
 glad_add_library(glad_gl REPRODUCIBLE API gl:compatibility=3.2 EXTENSIONS NONE)
 endif()
 if(ENABLE_GLES2)
-glad_add_library(glad_gles REPRODUCIBLE API gles2=2.0 EXTENSIONS GL_OES_element_index_uint GL_EXT_texture_format_BGRA8888)
+glad_add_library(glad_gles REPRODUCIBLE API gles2=2.0 EXTENSIONS GL_OES_element_index_uint GL_EXT_texture_format_BGRA8888 GL_OES_vertex_array_object)
 endif()
 
 ## SDL2 ##
 if(EMSCRIPTEN)
 	# Emscripten provides SDL2 via port flag
 	add_library(SDL2::SDL2 INTERFACE IMPORTED)
-	target_link_options(SDL2::SDL2 INTERFACE "-s USE_SDL=2")
 	add_library(SDL2::SDL2main INTERFACE IMPORTED)
 	add_definitions(-DENABLE_SDL2)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_SDL=2")
 else()
 	find_package(SDL2 REQUIRED CONFIG)
 	add_definitions(-DENABLE_SDL2)
@@ -128,8 +135,9 @@ file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl2.cpp" "
 
 # workaround for OpenGLES includes, need to be glad rather than gles itself
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp" input)
-string(REPLACE "GLES2/gl2.h" "glad/gles.h" input "${input}")
-string(REPLACE "GLES3/gl3.h" "glad/gles.h" input "${input}")
+string(REPLACE "GLES2/gl2.h" "glad/gles2.h" input "${input}")
+string(REPLACE "GLES2/gl2ext.h" "glad/gles2.h" input "${input}")
+string(REPLACE "GLES3/gl3.h" "glad/gles2.h" input "${input}")
 file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends/imgui_impl_opengl3.cpp" "${input}")
 
 set(SOURCES

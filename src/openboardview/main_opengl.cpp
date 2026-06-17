@@ -38,6 +38,10 @@
 
 #include "filesystem_impl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 // Handling of DDE command line argument for PDFBridge
 #ifdef _WIN32
 #include "PDFBridge/PDFBridgeSumatra.h"
@@ -209,6 +213,120 @@ void cleanupAndExit(int c) {
 	if (window) SDL_DestroyWindow(window);
 	SDL_Quit();
 	exit(c);
+}
+
+struct MainLoopCtx {
+	BoardView *app;
+	std::string *configDir;
+	ImVec4 *clear_color;
+	Fonts *fonts;
+	globals *g;
+	bool *preload_required;
+	uint8_t *sleepout;
+	float *angleacc;
+	bool *done;
+};
+
+static void main_loop_cb(void *arg) {
+	MainLoopCtx *ctx = (MainLoopCtx *)arg;
+	BoardView &app = *ctx->app;
+	ImVec4 &clear_color = *ctx->clear_color;
+	Fonts &fonts = *ctx->fonts;
+	globals &g = *ctx->g;
+	std::string &configDir = *ctx->configDir;
+	bool &preload_required = *ctx->preload_required;
+	uint8_t &sleepout = *ctx->sleepout;
+	float &angleacc = *ctx->angleacc;
+	bool &done = *ctx->done;
+	SDL_Window *window = Renderers::current->getWindow();
+
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		sleepout = 30;
+		Renderers::current->processEvent(event);
+
+		if (event.type == SDL_DROPFILE) {
+			app.LoadFile(filesystem::u8path(event.drop.file));
+		} else if(event.type == SDL_MULTIGESTURE && event.mgesture.numFingers == 2 && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+			app.m_dragging_token = -1;
+			if (fabs(event.mgesture.dTheta) > 3.14 / 180.0) {
+				angleacc += event.mgesture.dTheta;
+				if (angleacc >= 3.14 / 2) {
+					app.Rotate(1);
+					angleacc = 0.0;
+				} else if (angleacc <= -3.14 / 2) {
+					app.Rotate(-1);
+					angleacc = 0.0;
+				}
+			}
+			else if (fabs(event.mgesture.dDist) > 0.002) {
+				int w, h;
+				SDL_GetWindowSize(window, &w, &h);
+				app.Zoom(event.mgesture.x * w, event.mgesture.y * h, event.mgesture.dDist * app.config.zoomFactor * 10);
+			}
+		}
+
+		if (event.type == SDL_QUIT) done = true;
+	}
+
+	if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+		angleacc = 0.0;
+	}
+
+	if (app.reloadConfig) {
+		app.reloadConfig = false;
+		app.obvconfig.Load(configDir + "obv.conf");
+		app.ConfigParse();
+		clear_color = ImColor(app.m_colors.backgroundColor);
+	}
+
+	if (app.reloadFonts) {
+		fonts.reload(app.config.fontName);
+		app.reloadFonts = false;
+	}
+
+#ifndef __EMSCRIPTEN__
+	if (!(sleepout--)) {
+		usleep(50000);
+		sleepout = 0;
+		return;
+	}
+#endif
+
+	Renderers::current->initFrame();
+	ImGui::NewFrame();
+
+	if (preload_required) {
+		app.LoadFile(filesystem::u8path(g.input_file));
+		preload_required = false;
+	}
+
+	app.Update();
+	if (app.m_wantsQuit) {
+		SDL_Event sdlevent;
+		sdlevent.type = SDL_QUIT;
+		SDL_PushEvent(&sdlevent);
+	}
+
+	if (app.history_file_has_changed) {
+		char scratch[1024];
+		snprintf(scratch, sizeof(scratch), "%s - %s", OBV_NAME, app.fhistory.history[0]);
+		SDL_SetWindowTitle(window, scratch);
+		app.history_file_has_changed = 0;
+	}
+
+	ImGui::Render();
+	Renderers::current->renderFrame(clear_color);
+
+#ifndef __EMSCRIPTEN__
+	if (!SDL_GL_GetSwapInterval()) {
+		static const int FPS = 30;
+		static const std::chrono::duration<std::intmax_t, std::ratio<1, FPS>> frameDuration{1};
+		static auto nextFrame = std::chrono::steady_clock::now() + frameDuration;
+		std::this_thread::sleep_until(nextFrame);
+		nextFrame += frameDuration;
+	}
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -398,110 +516,12 @@ int main(int argc, char **argv) {
 	 */
 	sleepout = 30;
 	float angleacc = 0.0;
-	while (!done) {
+	MainLoopCtx ctx = {&app, &configDir, &clear_color, &fonts, &g, &preload_required, &sleepout, &angleacc, &done};
 
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			sleepout = 30;
-			Renderers::current->processEvent(event);
-
-			if (event.type == SDL_DROPFILE) {
-				app.LoadFile(filesystem::u8path(event.drop.file));
-			} else if(event.type == SDL_MULTIGESTURE && event.mgesture.numFingers == 2 && !ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-				//Inhibit dragging board area
-				app.m_dragging_token = -1;
-				//Rotation detected, at least 1°
-				if (fabs(event.mgesture.dTheta) > 3.14 / 180.0) {
-					angleacc += event.mgesture.dTheta;
-					if (angleacc >= 3.14 / 2) {
-						// > 90°
-						app.Rotate(1);
-						angleacc = 0.0;
-					} else if (angleacc <= -3.14 / 2) {
-						// < 90°
-						app.Rotate(-1);
-						angleacc = 0.0;
-					}
-				}
-				//Pinch-to-zoom
-				else if (fabs(event.mgesture.dDist) > 0.002) {
-					int w, h;
-					SDL_GetWindowSize(window, &w, &h);
-					app.Zoom(event.mgesture.x * w, event.mgesture.y * h, event.mgesture.dDist * app.config.zoomFactor * 10);
-				}
-			}
-
-			if (event.type == SDL_QUIT) done = true;
-		}
-
-		// reset rotation angle accumulator
-		if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-			angleacc = 0.0;
-		}
-
-		if (app.reloadConfig) {
-			app.reloadConfig = false;
-			app.obvconfig.Load(configDir + "obv.conf");
-			app.ConfigParse();
-			clear_color = ImColor(app.m_colors.backgroundColor);
-		}
-
-		if (app.reloadFonts) {
-			// Needs to happen after frame has been rendered (or before starting a new frame)
-			fonts.reload(app.config.fontName);
-			app.reloadFonts = false;
-		}
-
-		if (!(sleepout--)) {
-#ifdef _WIN32
-			Sleep(50);
+#ifdef __EMSCRIPTEN__
+	emscripten_set_main_loop_arg(main_loop_cb, &ctx, 0, 1);
 #else
-			usleep(50000);
-#endif
-			sleepout = 0;
-			continue;
-		} // puts OBV to sleep if nothing is happening.
-		// Prepare frame
-		Renderers::current->initFrame();
-		ImGui::NewFrame();
-
-		// If we have a board to view being passed from command line, then "inject"
-		// it here.
-		if (preload_required) {
-			app.LoadFile(filesystem::u8path(g.input_file));
-			preload_required = false;
-		}
-
-		app.Update();
-		if (app.m_wantsQuit) {
-			SDL_Event sdlevent;
-			sdlevent.type = SDL_QUIT;
-			SDL_PushEvent(&sdlevent);
-		}
-
-		// Update the title of the SDL app if the board filename has changed. -
-		// PLD20160618
-		if (app.history_file_has_changed) {
-			char scratch[1024];
-			snprintf(scratch, sizeof(scratch), "%s - %s", OBV_NAME, app.fhistory.history[0]);
-			SDL_SetWindowTitle(window, scratch);
-			app.history_file_has_changed = 0;
-		}
-
-		// Render frame
-		ImGui::Render();
-		Renderers::current->renderFrame(clear_color);
-
-		// vsync disabled, manual FPS limiting
-		if (!SDL_GL_GetSwapInterval()) {
-			static const int FPS = 30;
-			static const std::chrono::duration<std::intmax_t, std::ratio<1, FPS>> frameDuration{1};
-			static auto nextFrame = std::chrono::steady_clock::now() + frameDuration;
-
-			std::this_thread::sleep_until(nextFrame);
-			nextFrame += frameDuration;
-		}
-	}
+	while (!done) { main_loop_cb(&ctx); }
 
 	// Cleanup
 	Renderers::current->shutdown();
@@ -510,4 +530,5 @@ int main(int argc, char **argv) {
 
 	cleanupAndExit(0);
 	return 0;
+#endif
 }

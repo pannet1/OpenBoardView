@@ -140,7 +140,9 @@ if(WIN32)
 		win32.cpp
 	)
 elseif(EMSCRIPTEN)
-	# Emscripten platform: skip unix.cpp (GTK/dialog code not applicable)
+	set(SOURCES ${SOURCES}
+		emscripten_platform.cpp
+	)
 else()
 if(APPLE)
 	set(SOURCES ${SOURCES}
@@ -181,13 +183,8 @@ add_executable(${PROJECT_NAME_LOWER}
 )
 
 if(EMSCRIPTEN)
-	target_link_options(${PROJECT_NAME_LOWER} PRIVATE
-		"-s USE_SDL=2"
-		"-s USE_SQLITE3=1"
-		"-s ALLOW_MEMORY_GROWTH=1"
-		"-s WASM=1"
-		"-s EXPORTED_RUNTIME_METHODS=ccall,cwrap"
-	)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2 -s USE_SQLITE3=1 -s USE_ZLIB=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s EXPORTED_RUNTIME_METHODS=ccall,cwrap")
+
 elseif(MINGW)
 	set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
 	set_target_properties(${PROJECT_NAME_LOWER} PROPERTIES LINK_SEARCH_END_STATIC 1)
