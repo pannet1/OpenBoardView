@@ -20,6 +20,7 @@ else()
 	elseif(EMSCRIPTEN)
 		# Emscripten: no fontconfig, GTK, GIO — browser handles fonts, files, etc.
 		add_definitions(-DENABLE_GLES2)
+		add_definitions(-DPLATFORM_EMSCRIPTEN)
 	else()
 		find_package(PkgConfig REQUIRED)
 
@@ -138,6 +139,8 @@ if(WIN32)
 		PDFBridge/PDFBridgeSumatra.cpp
 		win32.cpp
 	)
+elseif(EMSCRIPTEN)
+	# Emscripten platform: skip unix.cpp (GTK/dialog code not applicable)
 else()
 if(APPLE)
 	set(SOURCES ${SOURCES}
@@ -177,7 +180,15 @@ add_executable(${PROJECT_NAME_LOWER}
 	${ASSETS}
 )
 
-if(MINGW) # Dirty fix to force linking all libs (esp. libstdc++) statically for Windows
+if(EMSCRIPTEN)
+	target_link_options(${PROJECT_NAME_LOWER} PRIVATE
+		"-s USE_SDL=2"
+		"-s USE_SQLITE3=1"
+		"-s ALLOW_MEMORY_GROWTH=1"
+		"-s WASM=1"
+		"-s EXPORTED_RUNTIME_METHODS=ccall,cwrap"
+	)
+elseif(MINGW)
 	set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
 	set_target_properties(${PROJECT_NAME_LOWER} PROPERTIES LINK_SEARCH_END_STATIC 1)
 elseif(APPLE)

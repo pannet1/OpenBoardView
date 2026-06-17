@@ -228,7 +228,9 @@ endif()
 
 ## stb ##
 if(NOT APPLE AND NOT WIN32 OR MINGW)
-	pkg_check_modules(STB stb)
+	if(NOT EMSCRIPTEN)
+		pkg_check_modules(STB stb)
+	endif()
 endif()
 
 if(NOT STB_FOUND)
