@@ -68,6 +68,10 @@ struct globals {
 
 static SDL_Window *window      = nullptr;
 
+#ifdef __EMSCRIPTEN__
+std::unique_ptr<BoardView> g_app;
+#endif
+
 char help[] =
     " [-h] [-V] [-l] [-c <config file>] [-i <intput file>] [-x <width>] [-y <height>] [-z <fontsize>] [-p <dpi>] [-r <renderer>] [-d]\n\
 	-h : This help\n\
@@ -332,8 +336,24 @@ static void main_loop_cb(void *arg) {
 int main(int argc, char **argv) {
 	uint8_t sleepout;
 	std::string configDir;
-	globals g; // because some things we have to store *before* we load the config file in BoardView app.obvconf
-	BoardView app{};
+	globals g; // because some things we have to store *before* we load the config file in BoardView app->obvconf
+	auto app = std::make_unique<BoardView>();
+#ifdef __EMSCRIPTEN__
+	g_app = std::move(app);
+	EM_ASM({
+		if (typeof Module !== 'undefined' && !Module.loadBoardFromMemory) {
+			Module.loadBoardFromMemory = function(arrayBuffer) {
+				var data = new Uint8Array(arrayBuffer);
+				var ptr = Module._malloc(data.length);
+				if (!ptr) return -1;
+				Module.HEAPU8.set(data, ptr);
+				var result = Module._loadBoardFromMemory(ptr, data.length);
+				Module._free(ptr);
+				return result;
+			};
+		}
+	});
+#endif
 
 	SDL_LogSetAllPriority(SDL_LOG_PRIORITY_INFO);
 
@@ -354,10 +374,10 @@ int main(int argc, char **argv) {
 	 */
 	parse_parameters(argc, argv, &g);
 
-	app.debug = g.debug;
+	app->debug = g.debug;
 
 	// Log all messages
-	if (app.debug) {
+	if (app->debug) {
 		SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
 	}
 
@@ -379,22 +399,22 @@ int main(int argc, char **argv) {
 
 	// Load the configuration file
 	configDir = get_user_dir(UserDir::Config);
-	if (!configDir.empty()) app.obvconfig.Load(configDir + "obv.conf", true);
+	if (!configDir.empty()) app->obvconfig.Load(configDir + "obv.conf", true);
 
 	// Load file history
 	std::string dataDir = get_user_dir(UserDir::Data);
 	if (!dataDir.empty()) {
-		app.fhistory.Set_filename(dataDir + "obv.history");
-		app.fhistory.Load();
+		app->fhistory.Set_filename(dataDir + "obv.history");
+		app->fhistory.Load();
 	}
 
 	// If we've chosen to override the normally found config.
-	if (g.config_file) app.obvconfig.Load(g.config_file, true);
+	if (g.config_file) app->obvconfig.Load(g.config_file, true);
 
 #ifdef _WIN32
 	// Run PDF reverse search command if called with --reversesearch
 	if (g.pdfBridgePdfPath != nullptr && g.pdfBridgeSearchStr != nullptr) {
-		PDFBridgeSumatra &pdfBrdigeSumatra = PDFBridgeSumatra::GetInstance(app.obvconfig);
+		PDFBridgeSumatra &pdfBrdigeSumatra = PDFBridgeSumatra::GetInstance(app->obvconfig);
 		if (!pdfBrdigeSumatra.ReverseSearch(g.pdfBridgePdfPath, g.pdfBridgeSearchStr)) {
 			return 2;
 		} else {
@@ -404,13 +424,13 @@ int main(int argc, char **argv) {
 #endif
 
 	// Apply the slowCPU flag if required.
-	app.config.slowCPU = g.slowCPU;
+	app->config.slowCPU = g.slowCPU;
 
-	if (g.width == 0) g.width   = app.config.windowX;
-	if (g.height == 0) g.height = app.config.windowY;
+	if (g.width == 0) g.width   = app->config.windowX;
+	if (g.height == 0) g.height = app->config.windowY;
 
 	if (g.renderer == Renderers::Renderer::DEFAULT) {
-		g.renderer = Renderers::get(app.obvconfig.ParseInt("renderer", static_cast<int>(Renderers::Preferred)));
+		g.renderer = Renderers::get(app->obvconfig.ParseInt("renderer", static_cast<int>(Renderers::Preferred)));
 	}
 
 	float main_scale = ImGuiRendererSDL::getDisplayScale();
@@ -470,27 +490,27 @@ int main(int argc, char **argv) {
 	if (g.dpi > 0) setDPI(g.dpi);
 
 	// Now that the configuration file is loaded in to BoardView, parse its settings.
-	app.ConfigParse();
+	app->ConfigParse();
 
 	// Preset some workable sizes
-	app.m_board_surface.x = g.width;
-	app.m_board_surface.y = g.height;
-	if (app.config.showInfoPanel) app.m_board_surface.x -= app.m_info_surface.x;
-	if (app.m_board_surface.x <= 0.0f) {
-		app.m_board_surface.x = g.width * 0.66f;
-		app.m_info_surface.x = g.width - app.m_board_surface.x;
+	app->m_board_surface.x = g.width;
+	app->m_board_surface.y = g.height;
+	if (app->config.showInfoPanel) app->m_board_surface.x -= app->m_info_surface.x;
+	if (app->m_board_surface.x <= 0.0f) {
+		app->m_board_surface.x = g.width * 0.66f;
+		app->m_info_surface.x = g.width - app->m_board_surface.x;
 	}
 
-	if (g.font_size > 0.0) app.config.fontSize = g.font_size;
+	if (g.font_size > 0.0) app->config.fontSize = g.font_size;
 
 	Fonts fonts;
-	std::string loadedFontName = fonts.load(app.config.fontName);
+	std::string loadedFontName = fonts.load(app->config.fontName);
 	if (!loadedFontName.empty()) { // Overwrite saved font name by the one that has just been loaded
-		app.obvconfig.WriteStr("fontName", loadedFontName.c_str());
+		app->obvconfig.WriteStr("fontName", loadedFontName.c_str());
 	}
 
 	// ImVec4 clear_color = ImColor(20, 20, 30);
-	ImVec4 clear_color = ImColor(app.m_colors.backgroundColor);
+	ImVec4 clear_color = ImColor(app->m_colors.backgroundColor);
 
 	/*
 	 * If we've asked to load a file from the command line
@@ -516,7 +536,7 @@ int main(int argc, char **argv) {
 	 */
 	sleepout = 30;
 	float angleacc = 0.0;
-	MainLoopCtx ctx = {&app, &configDir, &clear_color, &fonts, &g, &preload_required, &sleepout, &angleacc, &done};
+	MainLoopCtx ctx = {app.get(), &configDir, &clear_color, &fonts, &g, &preload_required, &sleepout, &angleacc, &done};
 
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop_arg(main_loop_cb, &ctx, 0, 1);
@@ -532,3 +552,13 @@ int main(int argc, char **argv) {
 	return 0;
 #endif
 }
+
+#ifdef __EMSCRIPTEN__
+extern "C" {
+int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
+	if (!g_app || !data || length <= 0) return -1;
+	std::vector<char> buffer(data, data + length);
+	return g_app->LoadFromBuffer(buffer);
+}
+}
+#endif

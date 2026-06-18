@@ -56,6 +56,7 @@ void Config::SetCAEKey(const char *keytext) {
 }
 
 void Config::SetXZZPCBKey(const std::string &keytext) {
+	if (keytext.empty()) return;
 	try {
 		XZZPCBKey = std::stoul(keytext, nullptr, 0);
 		XZZPCBKeyStr = keytext;
@@ -65,9 +66,9 @@ void Config::SetXZZPCBKey(const std::string &keytext) {
 }
 
 void Config::readFromConfig(Confparse &obvconfig) {
-	// Special test here, in case we've already set the dpi from external
-	// such as command line.
-	if (getDPI() == 0) dpi = obvconfig.ParseInt("dpi", 100);
+	if (getDPI() == 0) {
+		dpi = obvconfig.ParseInt("dpi", 100);
+	}
 	if (dpi < 50) dpi = 50;
 	if (dpi > 400) dpi = 400;
 
@@ -83,7 +84,6 @@ void Config::readFromConfig(Confparse &obvconfig) {
 	if ((!pinShapeCircle) && (!pinShapeSquare)) {
 		pinShapeSquare = true;
 	}
-
 
 	pinHalo          = obvconfig.ParseBool("pinHalo", true);
 	pinHaloDiameter  = obvconfig.ParseDouble("pinHaloDiameter", 1.25);
@@ -131,26 +131,8 @@ void Config::readFromConfig(Confparse &obvconfig) {
 	pdfSoftwarePath = obvconfig.ParseStr("pdfSoftwarePath", "SumatraPDF.exe");
 #endif
 
-	/*
-	 * Some machines (Atom etc) don't have enough CPU/GPU
-	 * grunt to cope with the large number of AA'd circles
-	 * generated on a large dense board like a Macbook Pro
-	 * so we have the lowCPU option which will let people
-	 * trade good-looks for better FPS
-	 *
-	 * If we want slowCPU to take impact from a command line
-	 * parameter, we need it to be set to false before we
-	 * call this.
-	 */
 	slowCPU |= obvconfig.ParseBool("slowCPU", false);
 
-	/*
-	 * The asus .fz and Asrock .cae file formats require a specific key to be decoded.
-	 *
-	 * This key is supplied in the obv.conf file as a long single line
-	 * of comma/space separated 32-bit hex values 0x1234abcd etc.
-	 *
-	 */
 	SetFZKey(obvconfig.ParseStr("FZKey", ""));
 	SetCAEKey(obvconfig.ParseStr("CAEKey", ""));
 	SetXZZPCBKey(obvconfig.ParseStr("XZZPCBKey", ""));

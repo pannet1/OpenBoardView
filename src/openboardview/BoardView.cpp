@@ -184,6 +184,75 @@ int BoardView::LoadFile(const filesystem::path &filepath) {
 	return 0;
 }
 
+int BoardView::LoadFromBuffer(std::vector<char> &buffer) {
+	m_lastFileOpenWasInvalid = true;
+	m_validBoard             = false;
+	if (buffer.empty()) {
+		return 1;
+	}
+	// clean up the previous file.
+	if (m_file && m_board) {
+		m_pinHighlighted.clear();
+		m_partHighlighted.clear();
+		m_annotations.Close();
+		m_board->Nets().clear();
+		m_board->Pins().clear();
+		m_board->Components().clear();
+		m_board->OutlinePoints().clear();
+		m_board->OutlineSegments().clear();
+	}
+	delete m_file;
+	m_file = nullptr;
+	m_validBoard = false;
+	m_error_msg.clear();
+	pdfBridge.CloseDocument();
+
+	if (GenCADFile::verifyFormat(buffer))
+		m_file = new GenCADFile(buffer);
+	else if (ADFile::verifyFormat(buffer))
+		m_file = new ADFile(buffer);
+	else if (CADFile::verifyFormat(buffer))
+		m_file = new CADFile(buffer);
+	else if (BRDFile::verifyFormat(buffer))
+		m_file = new BRDFile(buffer);
+	else if (BRD2File::verifyFormat(buffer))
+		m_file = new BRD2File(buffer);
+	else if (BDVFile::verifyFormat(buffer))
+		m_file = new BDVFile(buffer);
+	else if (BVRFile::verifyFormat(buffer))
+		m_file = new BVRFile(buffer);
+	else if (BVR3File::verifyFormat(buffer))
+		m_file = new BVR3File(buffer);
+	else if (BRDAllegroFile::verifyFormat(buffer))
+		m_file = new BRDAllegroFile(buffer);
+	else if (XZZPCBFile::verifyFormat(buffer))
+		m_file = new XZZPCBFile(buffer, config.XZZPCBKey);
+	else
+		m_error_msg = "Unrecognized file format.";
+
+	if (m_file && m_file->valid) {
+		LoadBoard(m_file);
+		boardMinMaxDone          = false;
+		m_rotation               = 0;
+		m_current_side           = 0;
+		EPCCheck();
+
+		m_annotations.SetFilename("");
+		m_annotations.Load();
+
+		for (auto &p : m_board->Pins()) {
+			p->diameter = 7;
+		}
+
+		CenterView();
+		m_lastFileOpenWasInvalid = false;
+		m_validBoard             = true;
+		m_error_msg.clear();
+	}
+
+	return (m_validBoard ? 0 : 1);
+}
+
 
 void BoardView::ShowInfoPane(void) {
 	ImGuiIO &io = ImGui::GetIO();
