@@ -16,3 +16,4 @@ build_native_test/
 __pycache__/
 *.pyc
 *.pyo
+uv.lock

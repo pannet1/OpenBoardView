@@ -1,19 +1,26 @@
 import os, pathlib
 
-STATIC_DIR = pathlib.Path(__file__).parent / "_static"
+DEFAULT_WASM_DIR = pathlib.Path(__file__).parent / "_static"
 
 
-def make_static_files_app(*, coop_coep=True):
+def make_static_files_app(static_dir=None, *, coop_coep=True):
     """Create a Starlette StaticFiles app that serves the OpenBoardView files.
 
-    Usage in FastAPI:
+    Args:
+        static_dir: path to directory containing openboardview.js.
+                    Defaults to the package's _static/ dir (populated by
+                    ./scripts/build-wasm.sh).
+
+    Usage:
         from openboardview_wasm import make_static_files_app
         app.mount("/wasm", make_static_files_app(), name="wasm")
     """
     from starlette.staticfiles import StaticFiles
-    from starlette.responses import Response
 
-    inner = StaticFiles(directory=str(STATIC_DIR), html=True, check_dir=False)
+    if static_dir is None:
+        static_dir = DEFAULT_WASM_DIR
+
+    inner = StaticFiles(directory=str(static_dir), html=True, check_dir=False)
 
     if not coop_coep:
         return inner
