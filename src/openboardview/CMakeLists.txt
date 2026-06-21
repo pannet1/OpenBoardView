@@ -183,7 +183,8 @@ add_executable(${PROJECT_NAME_LOWER}
 )
 
 if(EMSCRIPTEN)
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_SDL=2 -s USE_SQLITE3=1 -s USE_ZLIB=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s STACK_SIZE=5MB -s EXPORTED_RUNTIME_METHODS=ccall,cwrap -s EXPORTED_FUNCTIONS=_malloc,_free,_main,_loadBoardFromMemory,_wasmTest,_testData")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O2 -s USE_SDL=2 -s USE_SQLITE3=1 -s USE_ZLIB=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s STACK_SIZE=5MB -s EXPORTED_RUNTIME_METHODS=ccall,cwrap -s EXPORTED_FUNCTIONS=_malloc,_free,_main,_loadBoardFromMemory,_wasmTest,_testData")
 
 elseif(MINGW)
 	set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
