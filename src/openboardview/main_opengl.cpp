@@ -570,9 +570,11 @@ int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
 	if (buffer.empty()) return -2;
-	// Use local BoardView to bypass any g_app corruption
-	BoardView bv;
-	return bv.LoadFromBuffer(buffer);
+	// Try creating BRDFile directly from buffer — simplest possible object creation
+	auto *f = new BRDFile(buffer);
+	int ret = f->valid ? 0 : 1;
+	delete f;
+	return ret;
 }
 
 int EMSCRIPTEN_KEEPALIVE testData(const char *data, int length) {
