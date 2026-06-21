@@ -559,10 +559,13 @@ int EMSCRIPTEN_KEEPALIVE wasmTest() {
 	return 42;
 }
 int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
+	EM_ASM({ console.log('C++: entered loadBoardFromMemory'); });
 	if (!g_app || !data || length <= 0) return -1;
+	EM_ASM({ console.log('C++: about to construct vector'); });
 	std::vector<char> buffer(data, data + length);
+	EM_ASM({ console.log('C++: about to call LoadFromBuffer'); });
 	int ret = g_app->LoadFromBuffer(buffer);
-	EM_ASM({ console.log('C++: g_app valid, length=' + $0 + ', ret=' + $1); }, length, ret);
+	EM_ASM({ console.log('C++: ret=' + $0); }, ret);
 	return ret;
 }
 
