@@ -570,49 +570,9 @@ int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
 	if (buffer.empty()) return -2;
-	if (!g_app) return -3;
-
-	// Inline the format detection + load to avoid BoardView::LoadFromBuffer issues
-	g_app->m_lastFileOpenWasInvalid = true;
-	g_app->m_validBoard = false;
-	delete g_app->m_file;
-	g_app->m_file = nullptr;
-	g_app->m_error_msg.clear();
-	g_app->pdfBridge.CloseDocument();
-
-	if (GenCADFile::verifyFormat(buffer))
-		g_app->m_file = new GenCADFile(buffer);
-	else if (ADFile::verifyFormat(buffer))
-		g_app->m_file = new ADFile(buffer);
-	else if (CADFile::verifyFormat(buffer))
-		g_app->m_file = new CADFile(buffer);
-	else if (BRDFile::verifyFormat(buffer))
-		g_app->m_file = new BRDFile(buffer);
-	else if (BRD2File::verifyFormat(buffer))
-		g_app->m_file = new BRD2File(buffer);
-	else if (BDVFile::verifyFormat(buffer))
-		g_app->m_file = new BDVFile(buffer);
-	else if (BVRFile::verifyFormat(buffer))
-		g_app->m_file = new BVRFile(buffer);
-	else if (BVR3File::verifyFormat(buffer))
-		g_app->m_file = new BVR3File(buffer);
-	else if (BRDAllegroFile::verifyFormat(buffer))
-		g_app->m_file = new BRDAllegroFile(buffer);
-	else if (XZZPCBFile::verifyFormat(buffer))
-		g_app->m_file = new XZZPCBFile(buffer, g_app->config.XZZPCBKey);
-
-	if (g_app->m_file && g_app->m_file->valid) {
-		g_app->LoadBoard(g_app->m_file);
-		g_app->boardMinMaxDone = false;
-		g_app->m_rotation = 0;
-		g_app->m_current_side = 0;
-		g_app->EPCCheck();
-		g_app->m_lastFileOpenWasInvalid = false;
-		g_app->m_validBoard = true;
-		g_app->m_error_msg.clear();
-		return 0;
-	}
-	return 1;
+	// Use local BoardView to bypass any g_app corruption
+	BoardView bv;
+	return bv.LoadFromBuffer(buffer);
 }
 
 int EMSCRIPTEN_KEEPALIVE testData(const char *data, int length) {
