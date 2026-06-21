@@ -1,70 +1,18 @@
-/Debug
-/Release
-/release_build/
-/build/
-/bin/
-/lib/
-test
-*.aps
-*.opensdf
-*.VC.db
-*.sdf
-.vs
-imgui.ini
+# agent artifacts
+.agents
+AGENTS.md
 
-# VS cache files
-*.aps
-*.ncb
-*.opendb
-*.opensdf
-*.sdf
-*.cachefile
-*.VC.db
-*.VC.VC.opendb
-*.tags
-.idea/
-tags
+# dev notes
+prompt.md
 
-# Do not track QtCreator imported or any other project files
-OpenBoardView.config
-OpenBoardView.files
-OpenBoardView.includes
-*.creator
-*.creator.*
-.qmake.stash
-*.pro
-*.pro.*
+# scripts
+scripts/test-node.mjs
 
-# Dolphin hidden files marker
-.directory
+# build artifacts
+build_*/
+build_native_test/
 
-*.a
-
-# https://github.com/github/gitignore/blob/master/CMake.gitignore
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
-
-debug_build
-CPackConfig.cmake
-CPackSourceConfig.cmake
-
-include/version.h
-share
-
-# macOS specific
-.DS_Store
-*.dmg
-*.app
-
-# VS Code
-.vscode
-build_wasm/
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
