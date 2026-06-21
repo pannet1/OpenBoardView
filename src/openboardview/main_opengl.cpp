@@ -68,9 +68,7 @@ struct globals {
 
 static SDL_Window *window      = nullptr;
 
-#ifdef __EMSCRIPTEN__
 std::unique_ptr<BoardView> g_app;
-#endif
 
 char help[] =
     " [-h] [-V] [-l] [-c <config file>] [-i <intput file>] [-x <width>] [-y <height>] [-z <fontsize>] [-p <dpi>] [-r <renderer>] [-d]\n\
@@ -338,8 +336,8 @@ int main(int argc, char **argv) {
 	std::string configDir;
 	globals g; // because some things we have to store *before* we load the config file in BoardView app->obvconf
 	auto app = std::make_unique<BoardView>();
-#ifdef __EMSCRIPTEN__
 	g_app = std::move(app);
+#ifdef __EMSCRIPTEN__
 	EM_ASM({
 		if (typeof Module !== 'undefined' && !Module.loadBoardFromMemory) {
 			Module.loadBoardFromMemory = function(arrayBuffer) {
@@ -536,7 +534,7 @@ int main(int argc, char **argv) {
 	 */
 	sleepout = 30;
 	float angleacc = 0.0;
-	MainLoopCtx ctx = {app.get(), &configDir, &clear_color, &fonts, &g, &preload_required, &sleepout, &angleacc, &done};
+	MainLoopCtx ctx = {g_app.get(), &configDir, &clear_color, &fonts, &g, &preload_required, &sleepout, &angleacc, &done};
 
 #ifdef __EMSCRIPTEN__
 	emscripten_set_main_loop_arg(main_loop_cb, &ctx, 0, 1);
@@ -559,14 +557,9 @@ int EMSCRIPTEN_KEEPALIVE wasmTest() {
 	return 42;
 }
 int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
-	EM_ASM({ console.log('C++: entered loadBoardFromMemory'); });
 	if (!g_app || !data || length <= 0) return -1;
-	EM_ASM({ console.log('C++: about to construct vector'); });
 	std::vector<char> buffer(data, data + length);
-	EM_ASM({ console.log('C++: about to call LoadFromBuffer'); });
-	int ret = g_app->LoadFromBuffer(buffer);
-	EM_ASM({ console.log('C++: ret=' + $0); }, ret);
-	return ret;
+	return g_app->LoadFromBuffer(buffer);
 }
 
 int EMSCRIPTEN_KEEPALIVE testData(const char *data, int length) {
