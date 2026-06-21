@@ -555,6 +555,9 @@ int main(int argc, char **argv) {
 
 #ifdef __EMSCRIPTEN__
 extern "C" {
+int EMSCRIPTEN_KEEPALIVE wasmTest() {
+	return 42;
+}
 int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!g_app || !data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
