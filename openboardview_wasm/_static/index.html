@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>OpenBoardView</title>
+<style>body{margin:0;overflow:hidden;background:#222}canvas{display:block;width:100vw;height:100vh}</style>
+</head>
+<body>
+<canvas id="canvas" width="1280" height="720"></canvas>
+<script>
+var canvas = document.getElementById('canvas');
+var Module = { canvas: canvas };
+var _pendingFile = null;
+
+function loadBoard(url) {
+  if (typeof Module.loadBoardFromMemory === 'function') {
+    fetch(url).then(function(r){
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function(buf){
+      var result = Module.loadBoardFromMemory(buf);
+      if (result !== 0) console.error('loadBoardFromMemory failed:', result);
+      else console.log('Board loaded:', url);
+    }).catch(function(e){
+      console.error('Failed to load board:', e);
+    });
+  } else {
+    _pendingFile = url;
+  }
+}
+
+// Retry pending file once module is ready
+(function check(){
+  if (_pendingFile && typeof Module.loadBoardFromMemory === 'function') {
+    var url = _pendingFile;
+    _pendingFile = null;
+    loadBoard(url);
+  } else {
+    setTimeout(check, 200);
+  }
+})();
+
+// Load board from ?file= query param
+(function(){
+  var m = window.location.search.match(/[?&]file=([^&]+)/);
+  if (m) loadBoard(decodeURIComponent(m[1]));
+})();
+</script>
+<script src="openboardview.js"></script>
+</body>
+</html>

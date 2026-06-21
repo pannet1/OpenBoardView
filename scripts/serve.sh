@@ -8,14 +8,14 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${1:-8080}"
 WASM_DIR="$DIR/build_wasm/src/openboardview"
 
-if [ ! -f "$WASM_DIR/openboardview.wasm" ]; then
-  echo "No WASM build found at $WASM_DIR"
+if [ ! -f "$WASM_DIR/openboardview.js" ]; then
+  echo "No build found at $WASM_DIR"
   echo "Run ./scripts/build-wasm.sh first"
   exit 1
 fi
 
-echo "Serving OpenBoardView WASM at http://localhost:$PORT"
-echo "Files: $(ls "$WASM_DIR"/openboardview.{js,wasm} 2>/dev/null)"
+echo "Serving OpenBoardView at http://localhost:$PORT"
+echo "Files: $(ls "$WASM_DIR"/openboardview.* 2>/dev/null)"
 
 # Prefer python3 test server (has COOP/COEP headers built in)
 if command -v python3 &>/dev/null; then

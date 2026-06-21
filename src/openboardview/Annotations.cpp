@@ -59,12 +59,15 @@ bool Annotations::Open(bool create) {
 	int r = sqlite3_open_v2(sqlfn.c_str(), &sqldb, flags, NULL);
 
 	if (r != SQLITE_OK) {
+#ifndef __EMSCRIPTEN__
 		SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Annotations database %s could not be opened: %s", sqlfn.c_str(), sqlite3_errmsg(sqldb));
+#endif
 		sqldb = nullptr;
 		return false;
 	}
-
+#ifndef __EMSCRIPTEN__
 	SDL_LogDebug(SDL_LOG_CATEGORY_APPLICATION, "Annotations database %s opened successfully", sqlfn.c_str());
+#endif
 
 	Init();
 	GenerateList();

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openboardview-wasm"
+version = "0.1.0"
+description = "OpenBoardView for the browser – WebAssembly board file viewer"
+readme = "WASM_PORT.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "starlette>=0.40",
+]
+[project.optional-dependencies]
+fastapi = ["fastapi>=0.100"]
+serve = ["uvicorn>=0.20"]
+
+[project.urls]
+Homepage = "https://github.com/pannet1/OpenBoardView"
+
+[project.scripts]
+openboardview-wasm = "openboardview_wasm._cli:main"
+
+[tool.setuptools.packages.find]
+include = ["openboardview_wasm*"]
+
+[tool.setuptools]
+include-package-data = true

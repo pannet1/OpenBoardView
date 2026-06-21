@@ -570,7 +570,6 @@ int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
 	if (buffer.empty()) return -2;
-	// Use the existing global BoardView (already initialized by main())
 	int ret = g_app->LoadFromBuffer(buffer);
 	return ret;
 }
