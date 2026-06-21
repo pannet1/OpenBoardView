@@ -561,7 +561,14 @@ int EMSCRIPTEN_KEEPALIVE wasmTest() {
 int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!g_app || !data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
-	return g_app->LoadFromBuffer(buffer);
+	int ret = g_app->LoadFromBuffer(buffer);
+	EM_ASM({ console.log('C++: g_app valid, length=' + $0 + ', ret=' + $1); }, length, ret);
+	return ret;
+}
+
+int EMSCRIPTEN_KEEPALIVE testData(const char *data, int length) {
+	if (!data || length <= 0) return -2;
+	return length > 0 ? (unsigned char)data[0] : -3;
 }
 }
 #endif
