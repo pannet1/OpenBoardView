@@ -14,8 +14,8 @@ if ! git remote get-url upstream &>/dev/null; then
   git remote add upstream https://github.com/OpenBoardView/OpenBoardView.git
 fi
 git fetch upstream
-echo "==> Rebasing onto upstream/main..."
-git rebase upstream/main
+echo "==> Rebasing onto upstream/master..."
+git rebase upstream/master
 
 echo ""
 echo "=== Common conflict areas ==="
