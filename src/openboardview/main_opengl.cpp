@@ -40,6 +40,8 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include "FileFormats/BRDFile.h"
+#include "FileFormats/BRD2File.h"
 #endif
 
 // Handling of DDE command line argument for PDFBridge
@@ -557,8 +559,14 @@ int EMSCRIPTEN_KEEPALIVE wasmTest() {
 	return 42;
 }
 int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
-	if (!g_app || !data || length <= 0) return -1;
+	if (!data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
+	if (buffer.empty()) return -2;
+	// Try format detection inline, bypass BoardView entirely
+	if (BRDFile::verifyFormat(buffer)) return 10;
+	if (BRD2File::verifyFormat(buffer)) return 11;
+	// Fall through to BoardView if no simple match
+	if (!g_app) return -3;
 	return g_app->LoadFromBuffer(buffer);
 }
 
