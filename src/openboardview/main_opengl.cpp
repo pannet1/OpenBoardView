@@ -562,10 +562,6 @@ int EMSCRIPTEN_KEEPALIVE loadBoardFromMemory(const char *data, int length) {
 	if (!data || length <= 0) return -1;
 	std::vector<char> buffer(data, data + length);
 	if (buffer.empty()) return -2;
-	// Try format detection inline, bypass BoardView entirely
-	if (BRDFile::verifyFormat(buffer)) return 10;
-	if (BRD2File::verifyFormat(buffer)) return 11;
-	// Fall through to BoardView if no simple match
 	if (!g_app) return -3;
 	return g_app->LoadFromBuffer(buffer);
 }
