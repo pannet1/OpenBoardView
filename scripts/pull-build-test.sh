@@ -7,15 +7,15 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$DIR"
 
-# 1. Pull and merge upstream
+# 1. Sync with upstream
 echo "==> Fetching upstream..."
 if ! git remote get-url upstream &>/dev/null; then
   echo "Adding upstream remote..."
   git remote add upstream https://github.com/OpenBoardView/OpenBoardView.git
 fi
 git fetch upstream
-echo "==> Merging upstream/main..."
-git merge upstream/main
+echo "==> Rebasing onto upstream/main..."
+git rebase upstream/main
 
 echo ""
 echo "=== Common conflict areas ==="
